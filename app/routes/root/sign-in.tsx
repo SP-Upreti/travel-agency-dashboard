@@ -5,9 +5,20 @@ import { account } from "~/appwrite/client";
 
 export async function clientLoader() {
   try {
+    console.log("sign-in clientLoader: start");
     const user = await account.get();
-    console.log(user);
-    if (user.$id) return redirect("/dashboard");
+    console.log("sign-in clientLoader: account.get() returned:", user);
+
+    try {
+      const session = await account.getSession("current");
+      console.log("sign-in clientLoader: account.getSession('current'):", session);
+    } catch (sErr) {
+      console.log("sign-in clientLoader: no session or error fetching session:", sErr);
+    }
+
+    if (typeof document !== "undefined") console.log("sign-in clientLoader: document.cookie:", document.cookie);
+
+    if (user && user.$id) return redirect("/dashboard");
   } catch (e) {
     console.log("Error fetching user", e);
   }

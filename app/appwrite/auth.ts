@@ -4,6 +4,7 @@ import { redirect } from "react-router";
 
 export const getExistingUser = async (id: string) => {
   try {
+    console.log("getExistingUser: checking for user with accountId:", id);
     const { rows, total } = await tablesDB.listRows({
       databaseId: appwriteConfig.databaseId,
       tableId: appwriteConfig.userCollectionId,
@@ -19,14 +20,10 @@ export const getExistingUser = async (id: string) => {
 
 export const storeUserData = async () => {
   try {
+    console.log("storeUserData: start");
     const user = await account.get();
+    console.log("storeUserData: account.get() returned:", user);
     if (!user) throw new Error("User not found");
-
-    const { providerAccessToken } = (await account.getSession("current")) || {};
-
-    const profilePicture = providerAccessToken
-      ? await getGooglePicture(providerAccessToken)
-      : null;
 
     const createdUser = await tablesDB.createRow({
       databaseId: appwriteConfig.databaseId,
@@ -35,47 +32,31 @@ export const storeUserData = async () => {
       data: {
         accountId: user.$id,
         email: user.email,
-        name: user.name,
-        imageUrl: profilePicture,
+        name: user.name.slice(0, 15),
         joinedAt: new Date().toISOString(),
       },
     });
-
-    if (!createdUser.$id) redirect("/sign-in");
-  } catch (error) {
-    console.error("Error storing user data:", error);
-  }
-};
-
-const getGooglePicture = async (accessToken: string) => {
-  try {
-    const response = await fetch(
-      "https://people.googleapis.com/v1/people/me?personFields=photos",
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch Google profile picture");
+    console.log("Created user:", createdUser);
+    if (!createdUser.$id) {
+      console.log("storeUserData: createdUser has no $id, redirecting to /sign-in", createdUser);
+      return redirect("/sign-in");
     }
 
-    const { photos } = await response.json();
+    console.log("storeUserData: createdUser:", createdUser);
 
-    return photos?.[0]?.url || null;
+    return createdUser;
   } catch (error) {
-    console.error("Error fetching Google picture:", error);
+    console.error("Error storing user data:", error);
     return null;
   }
 };
 
 export const loginWithGoogle = async () => {
   try {
+    console.log("loginWithGoogle: initiating OAuth2 session");
     account.createOAuth2Session({
       provider: OAuthProvider.Google,
-      success: `${window.location.origin}/`,
+      success: `${window.location.origin}/dashboard`,
       failure: `${window.location.origin}/404`,
     });
   } catch (error) {
@@ -95,7 +76,9 @@ export const logoutUser = async () => {
 
 export const getUser = async () => {
   try {
+    console.log("getUser: start");
     const user = await account.get();
+    console.log("getUser: account.get() returned:", user);
 
     if (!user) return redirect("/sign-in");
 
@@ -104,10 +87,11 @@ export const getUser = async () => {
       tableId: appwriteConfig.userCollectionId,
       queries: [
         Query.equal("accountId", user.$id),
-        Query.select(["name", "email", "imageUrl", "joinedAt", "accountId"]),
+        Query.select(["name", "email", "joinedAt", "accountId"]),
       ],
     });
 
+    console.log("getUser: fetched rows length:", rows.length);
     return rows.length > 0 ? rows[0] : redirect("/sign-in");
   } catch (error) {
     console.error("Error fetching user:", error);

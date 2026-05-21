@@ -1,7 +1,15 @@
 import { Account, Client, TablesDB, Storage } from "appwrite";
 
+const getAppwriteEndpoint = () => {
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    return `${window.location.origin}/appwrite/v1`;
+  }
+
+  return import.meta.env.VITE_APPWRITE_API_ENDPOINT;
+};
+
 export const appwriteConfig = {
-  endpointUrl: import.meta.env.VITE_APPWRITE_API_ENDPOINT,
+  endpointUrl: "https://fra.cloud.appwrite.io/v1",
   projectId: import.meta.env.VITE_APPWRITE_PROJECT_ID,
   apiKey: import.meta.env.VITE_APPWRITE_API_KEY,
   databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
